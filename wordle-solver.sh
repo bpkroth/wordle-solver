@@ -9,7 +9,7 @@ set -o pipefail
 scriptdir=$(dirname $(readlink -f $0))
 cd "$scriptdir"
 
-use_sysdict_words_file=false
+use_sysdict_words_file=true
 
 sysdict_words_file='/usr/share/dict/american-english-insane'
 wordle_words_file='wordle_words.txt'
@@ -60,7 +60,7 @@ fi
 included_chars=''
 
 function remove_duplicate_letter_words() {
-    egrep -v '(.).*\1'
+    egrep -v '(.).*\1' || true
 }
 
 function opt_remove_duplicate_letter_words() {
@@ -82,7 +82,8 @@ function search_wordset() {
     fi
 
     if $use_sysdict_words_file; then
-        egrep -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
+        #egrep -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
+        egrep -x "$re" "$wordle_words_file" || egrep -x "$sysdict_words_file"
     else
         egrep -x "$re" "$wordle_words_file"
     fi  | grep "$included_chars_regexp" \
