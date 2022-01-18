@@ -42,15 +42,12 @@ fi
 # TODO: Improve this to replace the first arg with a length number and then use
 # captial letters to construct the char_pos_str with the remaining args.
 
-char_pos_str="${1:-}"
-shift
-
-if ! echo "$char_pos_str" | egrep -q -i '^[a-z.]{4,11}$'; then
-    echo "ERROR: Invalid character position string input." >&2
+char_str_len="${1:-}"
+if ! echo "$char_str_len" | egrep -q '^[0-9]+'; then
+    echo "ERROR: Invalid character length."
     exit 1
 fi
-char_pos_str=$(echo "$char_pos_str" | tr A-Z a-z)
-char_str_len=$(echo -n "$char_pos_str" | wc -c)
+shift
 
 is_first_guess=''
 if [ $# -eq 0 ]; then
@@ -115,9 +112,34 @@ if $is_first_guess; then
         # else keep allowing more letters until we find one
     done
 else
+    # construct our old char_pos_str on the fly for easier iteration on cli args
+    char_pos_str=$(seq -s' ' 1 $char_str_len | sed -r -e 's/[0-9]+/./g' | sed -e 's/ //g')
+    for guess_result_str in $*; do
+        if ! echo "$guess_result_str" | egrep -q -i "^[a-z]{$char_str_len}:[a-z.]{$char_str_len}$"; then
+            echo "ERROR: Invalid guess:result string format." >&2
+            exit 1
+        fi
+        guess=$(echo "$guess_result_str" | cut -d: -f1)
+        result=$(echo "$guess_result_str" | cut -d: -f2)
+
+        #echo "guess_result_str=$guess_result_str" >&2
+        for i in $(seq 0 $(($char_str_len-1))); do
+            if [[ ${result:$i:1} =~ [A-Z] ]]; then
+                if [ ${char_pos_str:$i:1} == '.' ]; then
+                    char_pos_str=${char_pos_str:0:$i}${result:$i:1}${char_pos_str:$(($i+1))}
+                elif [ ${char_pos_str:$i:1} != ${result:$i:1} ]; then
+                    echo "ERROR: Inconsistent character matches at position $i: ${char_pos_str:$i:1} != ${result:$i:1}"
+                    exit 1
+                fi
+            fi
+        done
+    done
+    char_pos_str=$(echo $char_pos_str | tr A-Z a-z)
+
     # prep some arrays and regex to use for matching word candidates
     # let '@' be a special character denoting an already fixed position
     char_pos_excluded=($(echo "$char_pos_str" | sed -r -e 's/(.)/\1\n/g' | sed 's/[a-z]/@/g'))
+    echo "${char_pos_excluded[*]}"
     for i in $(seq 0 $(($char_str_len-1))); do
         if [ ${char_pos_excluded[$i]:0:1} == '.' ]; then
             # Cleanup original stub character.
@@ -128,10 +150,6 @@ else
     included_chars=''
 
     for guess_result_str in $*; do
-        if ! echo "$guess_result_str" | egrep -q -i "^[a-z]{$char_str_len}:[a-z.]{$char_str_len}$"; then
-            echo "ERROR: Invalid guess:result string format." >&2
-            exit 1
-        fi
         guess=$(echo "$guess_result_str" | cut -d: -f1 | tr A-Z a-z)
         result=$(echo "$guess_result_str" | cut -d: -f2 | tr A-Z a-z)
 

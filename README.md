@@ -3,13 +3,13 @@
 ## Usage
 
 ```sh
-./wordle-solver.sh <dot-delimited-character-position-string> [<guess-string:dot-delimited-result-string>]*
+./wordle-solver.sh string-length [<guess-string:dot-delimited-result-string>]*
 ```
 
 1. Start with an initial guess.
 
     ```sh
-    ./wordle-solver.sh .....
+    ./wordle-solver.sh 5
     === Possible match suggestions without repeat letters (better for early guesses) ===
 
     atone
@@ -39,7 +39,7 @@
 2. Next guess.
 
     ```sh
-    ./wordle-solver.sh ..... atone:....e
+    ./wordle-solver.sh 5 atone:....e
     === Possible match suggestions without repeat letters (better for early guesses) ===
 
     heirs
@@ -58,8 +58,9 @@
     - e is include but in the wrong spot.
 
 3. Next guess.
+
     ```sh
-    ./wordle-solver.sh ....s atone:....e heirs:.e..S
+    ./wordle-solver.sh 5 atone:....e heirs:.e..S
     === Possible match suggestions without repeat letters (better for early guesses) ===
 
     clews
@@ -81,4 +82,5 @@
     lulls
     sleds
     ```
+
 4. And so on ...
