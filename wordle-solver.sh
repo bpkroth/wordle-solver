@@ -39,7 +39,7 @@ fi
 #   result is a dot delimited string of "right letters (though possibly wrong spot)"
 # e.g. ......s ethnos:.t.n.s trains:t..ins
 
-# TODO: Improve this to replace the first arg with a length number and then use
+# DONE: Improve this to replace the first arg with a length number and then use
 # captial letters to construct the char_pos_str with the remaining args.
 
 char_str_len="${1:-}"
