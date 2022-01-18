@@ -3,60 +3,82 @@
 ## Usage
 
 ```sh
-./wordle-solver.sh <dot-delimited-character-position-string> <included-characters> <excluded-characters>
+./wordle-solver.sh <dot-delimited-character-position-string> [<guess-string:dot-delimited-result-string>]*
 ```
 
 1. Start with an initial guess.
 
     ```sh
-    ./wordle-solver.sh ......    # 6 dots for a wordle puzzle of length 6
+    ./wordle-solver.sh .....
+    === Possible match suggestions without repeat letters (better for early guesses) ===
 
-    Possible match suggestions without repeat letters (better for early guesses):
+    atone
+    tenia
+    tinea
 
-    ethnos
-    hasten
-    honest
-    shanti
-    thanes
+    === Possible match suggestions with repeat letters ===
 
-    Possible match suggestions:
-
-    ethnos
-    hasten
-    honest
-    shanti
-    thanes
+    anent
+    eaten
+    inane
+    ninon
+    onion
+    taint
+    tanto
+    tenet
+    tenon
+    titan
+    tonne
     ```
 
-    Input: "ethnos"
+    Input: "atone"
 
     Returns:
-    - S is correct.
-    - T and N are included but in the wrong spot.
+    - e is included but in the wrong spot.
 
 2. Next guess.
 
     ```sh
-    ./wordle-solver.sh .....s tn eho
-    Possible match suggestions without repeat letters (better for early guesses):
+    ./wordle-solver.sh ..... atone:....e
+    === Possible match suggestions without repeat letters (better for early guesses) ===
 
-    trains
+    heirs
+    hires
 
-    Possible match suggestions:
+    === Possible match suggestions with repeat letters ===
 
-    saints
-    satins
-    stains
-    stasis
-    stints
-    taints
-    titans
+    esses
+    issei
     ```
 
-    Input: "trains"
+    Input: "heirs"
 
     Returns:
     - S is correct
-    - T, I, and N are include but in the wrong spot.
+    - e is include but in the wrong spot.
 
-3. and so on ...
+3. Next guess.
+    ```sh
+    ./wordle-solver.sh ....s atone:....e heirs:.e..S
+    === Possible match suggestions without repeat letters (better for early guesses) ===
+
+    clews
+    clues
+    culms
+    duces
+    duels
+    flues
+    fuels
+    fumes
+    mules
+
+    === Possible match suggestions with repeat letters ===
+
+    culls
+    dudes
+    dulls
+    esses
+    lulls
+    sleds
+    ```
+4. And so on ...

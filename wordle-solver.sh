@@ -30,60 +30,44 @@ if [ ! -f "$wordle_words_file" ] || [ ! -f "$wordle_words_js" ] || [ $(($(date +
     cat "$wordle_words_js" | egrep -o "JSON.parse\('\[[^)]+\]'\)"  | sed -e "s/^JSON.parse('//" -e "s/')//" | jq .[] | sed 's/"//g' > "$wordle_words_file"
 fi
 
-# Input handling (TODO: Improve this)
+# Input handling
 # - character position string:
 #   a series of periods that are replaced with the letter in that slot
 #   the number of dots determines the length of the word to look for
-# - included but wrong position characters: just a sequence of characters that should be included
-# - excluded characters: a string of characters that should not be included
+# - all remaining arguments are of the form guess:result where
+#   guess is a word (of the same length as the character position string), and
+#   result is a dot delimited string of "right letters (though possibly wrong spot)"
+# e.g. ......s ethnos:.t.n.s trains:t..ins
+
+# TODO: Improve this to replace the first arg with a length number and then use
+# captial letters to construct the char_pos_str with the remaining args.
 
 char_pos_str="${1:-}"
-included_chars="${2:-}"
-excluded_chars="${3:-}"
+shift
 
 if ! echo "$char_pos_str" | egrep -q -i '^[a-z.]{4,11}$'; then
     echo "ERROR: Invalid character position string input." >&2
     exit 1
 fi
 char_pos_str=$(echo "$char_pos_str" | tr A-Z a-z)
+char_str_len=$(echo -n "$char_pos_str" | wc -c)
 
-if ! echo "$included_chars" | egrep -q -i '^([a-z]*)|(\[[a-z]+\])$'; then
-    echo "ERROR: Invalid included characters string input." >&2
-    exit 1
-fi
-# Add the "right letter right position" characters to the included_chars set.
-included_chars+=$(echo "$char_pos_str" | sed 's/[.]//g')
-included_chars=$(echo $(echo "$included_chars" | tr A-Z a-z | sed -r -e 's/^\[//' -e 's/\]([a-z]*)$/\1/' | sed -r -e 's/(.)/\1\n/g' | egrep '^[a-z]+$' | sort) | sed 's/ //g')
-if [ -z "$included_chars" ] && ! echo "$char_pos_str" | grep -q -i '[a-z]'; then
-    included_chars=$(echo {a..z} | sed 's/ //g')
+is_first_guess=''
+if [ $# -eq 0 ]; then
+    is_first_guess=true
+else
+    is_first_guess=false
 fi
 
-if ! echo "$excluded_chars" | egrep -q -i '^([a-z]*)|(\[^[a-z]+\])$'; then
-    echo "ERROR: Invalid included characters string input." >&2
-    exit 1
-fi
-excluded_chars=$(echo $(echo "$excluded_chars" | tr A-Z a-z | sed -e 's/^\[^//' -e 's/\]$//' | sed -r -e 's/(.)/\1\n/g' | egrep '^[a-z]+$' | sort) | sed 's/ //g')
-if [ -z "$excluded_chars" ]; then
-    excluded_chars='@'
-fi
-
-# Check to see if included_chars and excluded_chars overlap at all (input error)
-if join -i <(echo "$included_chars" | sed -r 's/(.)/\1\n/g' | sort) <(echo "$excluded_chars" | sed -r 's/(.)/\1\n/g' | sort) | grep '^[a-z]$'; then
-    echo "ERROR: included_chars and excluded_chars overlap." >&2
-    exit 1
-fi
-
-function is_first_guess() {
-    #[ -z "$included_chars" ] && [ -z "$excluded_chars" ] && ! echo "$char_pos_str" | grep -q '[a-z]'
-    ! echo "$char_pos_str" | grep -q '[a-z]'
-}
+# The set of characters we know must be included.
+included_chars=''
 
 function remove_duplicate_letter_words() {
     egrep -v '(.).*\1'
 }
 
 function opt_remove_duplicate_letter_words() {
-    if is_first_guess; then
+    if $is_first_guess; then
         remove_duplicate_letter_words
     else
         cat
@@ -100,21 +84,11 @@ function search_wordset() {
         included_chars_regexp='.*'
     fi
 
-    excluded_chars_regexp=''
-    if [ -n "$excluded_chars" ]; then
-        excluded_chars_regexp="[$excluded_chars]"
-    else
-        # We're searching English words, so there shouldn't be any special characters like this.
-        excluded_chars_regexp='[@]'
-    fi
-
     if $use_sysdict_words_file; then
         egrep -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
     else
         egrep -x "$re" "$wordle_words_file"
     fi  | grep "$included_chars_regexp" \
-        | grep -v "$excluded_chars_regexp" \
-        | opt_remove_duplicate_letter_words \
         | sort | uniq
 }
 
@@ -124,14 +98,15 @@ regexp=''
 # See Also: https://www3.nd.edu/~busiforc/handouts/cryptography/Letter%20Frequencies.html
 frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
 frequent_letters_cnt=$(echo -n "$frequent_letters" | wc -c)
-str_len=$(echo -n "$char_pos_str" | wc -c)
-if is_first_guess; then
+all_chars=$(echo {a..z} | sed 's/ //g')
+if $is_first_guess; then
+    included_chars="$all_chars"
     word=''
-    for i in $(seq $str_len $frequent_letters_cnt); do
+    for i in $(seq $char_str_len $frequent_letters_cnt); do
         chars=$(echo "$frequent_letters" | cut -c-$i)
-        regexp="[$chars]{$str_len}"
+        regexp="[$chars]{$char_str_len}"
         set +o pipefail
-        word=$(search_wordset "$regexp" | opt_remove_duplicate_letter_words | head -n1)
+        word=$(search_wordset "$regexp" | remove_duplicate_letter_words | head -n1)
         set -o pipefail
         if [ -n "$word" ]; then
             # found at least one matching frequent word in the wordset
@@ -140,21 +115,69 @@ if is_first_guess; then
         # else keep allowing more letters until we find one
     done
 else
-    # TODO: currently we are throwing information away about included_chars that
-    # should not be in certain position.
+    # prep some arrays and regex to use for matching word candidates
+    # let '@' be a special character denoting an already fixed position
+    char_pos_excluded=($(echo "$char_pos_str" | sed -r -e 's/(.)/\1\n/g' | sed 's/[a-z]/@/g'))
+    for i in $(seq 0 $(($char_str_len-1))); do
+        if [ ${char_pos_excluded[$i]:0:1} == '.' ]; then
+            # Cleanup original stub character.
+            char_pos_excluded[$i]=''
+        fi
+    done
 
-    # Generate a character class expression.
-    chars=$(echo {a..z} | sed 's/ /\n/g')
-    if [ -n "$excluded_chars" ]; then
-        chars=$(echo "$chars" | grep -v "^[$excluded_chars]$")
-    fi
-    # flatten it again
-    chars=$(echo $(echo $chars) | sed 's/ //g')
-    charcls="[$chars]"
+    included_chars=''
 
-    #regexp=$(echo "$char_pos_str" | sed "s/[.]/$charcls/g")
+    for guess_result_str in $*; do
+        if ! echo "$guess_result_str" | egrep -q -i "^[a-z]{$char_str_len}:[a-z.]{$char_str_len}$"; then
+            echo "ERROR: Invalid guess:result string format." >&2
+            exit 1
+        fi
+        guess=$(echo "$guess_result_str" | cut -d: -f1 | tr A-Z a-z)
+        result=$(echo "$guess_result_str" | cut -d: -f2 | tr A-Z a-z)
 
-    regexp="$char_pos_str"
+        #echo "guess_result_str=$guess_result_str" >&2
+
+        for i in $(seq 0 $(($char_str_len-1))); do
+            # check whether that letter was a success, if not, add it to every other free position's excluded set
+            if [ "${result:$i:1}" == '.' ]; then
+                for j in $(seq 0 $(($char_str_len-1))); do
+                    if [ "${char_pos_excluded[$j]}" != '@' ] && ! [[ "${char_pos_excluded[$j]}" =~ "${guess:$i:1}" ]]; then
+                        # Append the wrongly guessed character to the excluded characters set for that position.
+                        char_pos_excluded[$j]+="${guess:$i:1}"
+                    fi
+                done
+            else
+                if ! [[ "$included_chars" =~ "${result:$i:1}" ]]; then
+                    included_chars+="${result:$i:1}"
+                fi
+
+                if [ "${char_pos_str:$i:1}" == '.' ]; then # || [ "${char_pos_str:$i:1}" != "${result:$i:1}" ]; then
+                    # this is the wrong position for that character, append it
+                    # to the exclude list, but just for this position
+                    char_pos_excluded[$i]+="${result:$i:1}"
+                fi
+            fi
+        done
+
+        #for i in $(seq 0 $(($char_str_len-1))); do echo "char_pos_excluded[$i]=${char_pos_excluded[$i]}" >&2; done
+    done
+
+    # turn those character exclusion sets into a regex
+    regexp=''
+    for i in $(seq 0 $(($char_str_len-1))); do
+        # Generate a character class expression.
+        if [ "${char_pos_excluded[$i]}" != '@' ] && [ "${char_pos_str:$i:1}" == '.' ]; then
+            chars=$(echo "$all_chars" | sed "s/[${char_pos_excluded[$i]}]//g")
+        elif [ "${char_pos_excluded[$i]}" == '@' ] && [ "${char_pos_str:$i:1}" != '.' ]; then
+            chars="${char_pos_str:$i:1}"
+        else
+            echo "ERROR" >&2
+            exit 1
+        fi
+        # Add it to the regexp.
+        regexp+="[$chars]"
+    done
+    #echo "regexp=$regexp" >&2
 fi
 
 words=$(search_wordset "$regexp" || true)
@@ -164,36 +187,43 @@ if [ -z "$words" ]; then
     exit 1
 fi
 
-# TODO: sort the output next tries by letter, digram, trigram, begging, ending frequencies?
+# TODO: refine or sort the output next tries by letter, digram, trigram, begging, ending frequencies?
+if true; then
+    max_words=10
 
-# refine the list using some simple letter frequency checks
-# iteratively remove less common letters
-if is_first_guess; then
-    included_chars_cls='[@]'
-else
-    included_chars_cls="[$included_chars]"
-fi
-for i in $(seq 1 $frequent_letters_cnt); do
-    chars=$(echo "$frequent_letters" | sed -e "s/[$included_chars_cls]//g" | rev | cut -c-$i)
-    new_words=$(echo "$words" | grep -v "[$chars]" || true)
-    new_words_without_repeat_letters=$(echo "$words_without_repeat_letters" | grep -v "[$chars]" || true)
-    if echo "$new_words_without_repeat_letters" | grep -q '[a-z]'; then
-        words_without_repeat_letters="$new_words_without_repeat_letters"
-    fi
-
-    if echo "$new_words" | grep -q '[a-z]'; then
-        words="$new_words"
-        #echo "continuing reduction after $i of $chars: $words"
+    # refine the list using some simple letter frequency checks
+    # iteratively remove less common letters
+    if $is_first_guess; then
+        included_chars_cls='[@]'
     else
-        #echo "stopping after $i"
-        break
+        included_chars_cls="[$included_chars]"
     fi
-done
+    for i in $(seq 1 $frequent_letters_cnt); do
+        chars=$(echo "$frequent_letters" | sed -e "s/[$included_chars_cls]//g" | rev | cut -c-$i)
+        new_words=$(echo "$words" | grep -v "[$chars]" || true)
+        new_words_without_repeat_letters=$(echo "$words_without_repeat_letters" | grep -v "[$chars]" || true)
+        if echo "$new_words_without_repeat_letters" | grep -q '[a-z]'; then
+            if [ $(echo "$words_without_repeat_letters" | wc -l) -gt $max_words ]; then
+                words_without_repeat_letters="$new_words_without_repeat_letters"
+            fi
+        fi
 
-echo "Possible match suggestions without repeat letters (better for early guesses):"
+        if echo "$new_words" | grep -q '[a-z]'; then
+            if [ $(echo "$words" | wc -l) -gt $max_words ]; then
+                words="$new_words"
+            fi
+            #echo "continuing reduction after $i of $chars: $words"
+        else
+            #echo "stopping after $i"
+            break
+        fi
+    done
+fi
+
+echo "=== Possible match suggestions without repeat letters (better for early guesses) ==="
 echo
 echo "$words_without_repeat_letters"
 echo
-echo "Possible match suggestions:"
+echo "=== Possible match suggestions with repeat letters ==="
 echo
-echo "$words"
+echo "$words" | egrep '(.).*\1'
