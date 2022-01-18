@@ -139,7 +139,6 @@ else
     # prep some arrays and regex to use for matching word candidates
     # let '@' be a special character denoting an already fixed position
     char_pos_excluded=($(echo "$char_pos_str" | sed -r -e 's/(.)/\1\n/g' | sed 's/[a-z]/@/g'))
-    echo "${char_pos_excluded[*]}"
     for i in $(seq 0 $(($char_str_len-1))); do
         if [ ${char_pos_excluded[$i]:0:1} == '.' ]; then
             # Cleanup original stub character.
