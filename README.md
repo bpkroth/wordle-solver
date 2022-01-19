@@ -1,6 +1,6 @@
 # wordle-solver
 
-A quick and relatively simple shell script to help solve [wordle](https://wordlegame.org/) (and even it's evil twin [absurdle](https://qntm.org/files/wordle/index.html)) puzzles.
+A quick and relatively simple shell script to help solve [wordle](https://wordlegame.org/) (and even its evil twin [absurdle](https://qntm.org/files/wordle/index.html)) puzzles.
 
 ## Requirements
 
