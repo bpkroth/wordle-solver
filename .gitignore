@@ -4,3 +4,4 @@
 # runtime wordle files
 wordle_words.txt
 wordle.js
+.wordle.js.checked
