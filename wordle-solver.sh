@@ -85,19 +85,18 @@ function opt_remove_duplicate_letter_words() {
 function search_wordset() {
     local re="$1"
 
-    included_chars_regexp=''
-    if [ -n "$included_chars" ]; then
-        included_chars_regexp="[$included_chars]"
-    else
-        included_chars_regexp='.*'
+    included_chars_awk='1'   # awk's true
+    if [ -n "$included_chars" ] && ! $is_first_guess; then
+        # compose a boolean "line matches all characters" check
+        included_chars_awk+=$(echo "$included_chars" | sed -r -e 's|([a-z])| \&\& /\1/|g')
     fi
 
     if $use_sysdict_words_file; then
         #egrep -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
-        egrep -x "$re" "$wordle_words_file" || egrep -x "$sysdict_words_file"
+        egrep -x "$re" "$wordle_words_file" || egrep -x "$re" "$sysdict_words_file"
     else
         egrep -x "$re" "$wordle_words_file"
-    fi  | grep "$included_chars_regexp" \
+    fi  | awk "( $included_chars_awk ) { print }" \
         | sort | uniq
 }
 
@@ -109,7 +108,7 @@ frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
 frequent_letters_cnt=$(echo -n "$frequent_letters" | wc -c)
 all_chars=$(echo {a..z} | sed 's/ //g')
 if $is_first_guess; then
-    included_chars="$all_chars"
+    #included_chars="$all_chars"
     word=''
     for i in $(seq $char_str_len $frequent_letters_cnt); do
         chars=$(echo "$frequent_letters" | cut -c-$i)
