@@ -11,7 +11,13 @@ cd "$scriptdir"
 
 use_sysdict_words_file=true
 
-sysdict_words_file='/usr/share/dict/american-english-insane'
+# Pick a system dictionary to use.
+#sysdict_words_file='/usr/share/dict/words'
+sysdict_words_file='/usr/share/dict/american-english'
+#sysdict_words_file='/usr/share/dict/american-english-large'
+#sysdict_words_file='/usr/share/dict/american-english-huge'
+#sysdict_words_file='/usr/share/dict/american-english-insane'
+
 wordle_words_file='wordle_words.txt'
 wordle_words_url='https://wordlegame.org/assets/js/wordle/en.js?v4'
 wordle_words_js='wordle.js'
