@@ -6,7 +6,7 @@ A quick and relatively simple shell script to help solve [wordle](https://wordle
 
 Tested on Ubuntu 20.04.
 Probably works on most Debian based things with `bash`.
-Others could also be made to work if you add the appropriate packages (see source for details.)
+Others could also be made to work if you add the appropriate packages (e.g. `curl`, `jq`, etc. - see source for more details.)
 
 ## Usage
 
@@ -41,7 +41,7 @@ From there it uses single English language letter frequency analysis to try to r
 
 ### Example
 
-1. Start with an initial guess based on 5 letter words that appear in either the wordle dictionary (see [source code](https://github.com/bpkroth/wordle-solver/blob/main/wordle-solver.sh#L16) for URL)
+1. Start with an initial guess based on 5 letter words that appear in either the wordle dictionary (see source code for `wordle_words_url`) or the system dictionary (currently set to do that as a last resort in case no words are found in the wordle dictionary).
 
     ```text
     # ./wordle-solver.sh 5
@@ -129,13 +129,13 @@ From there it uses single English language letter frequency analysis to try to r
 
 ## Notes
 
-### Why bash !?
+### Why `bash` !?
 
 Yeah, I know, but this was a quick lark in between meetings.  As I added more features I definitely regretted that choice somewhat, but whatever, it works well enough, let's move on now :P
 
 ### Why isn't this isn't fully automated?
 
-I haven't (yet) bothered to integrate it with something like phantomjs or selenium to automatically interact with the web pages.  See above about quick and hackish choice of bash :P
+I haven't (yet) bothered to integrate it with something like `phantomjs` or `selenium` to automatically interact with the web pages.  See above about quick and hackish choice of `bash` :P
 
 ### Improved next guess suggestion rankings?
 
