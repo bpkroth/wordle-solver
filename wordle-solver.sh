@@ -31,6 +31,10 @@ if [ ! -f "$sysdict_words_file" ] || ! type jq curl >/dev/null; then
     set +x
 fi
 
+# Exclude accented characters.
+export LC_ALL='C'   # en_US
+export LANG="$LC_ALL"
+
 # Fetch the words javascript and turn them into a file we can search.
 if [ ! -s "$wordle_words_file" ] || [ ! -s "$wordle_words_js" ] || [ ! -f "$wordle_words_js_ts" ] || [ $(($(date +%s) - $(stat --format='%Y' "$wordle_words_js_ts"))) -gt 1800 ]; then
     echo "INFO: Updating local wordle dictionary." >&2
