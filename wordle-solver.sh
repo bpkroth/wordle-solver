@@ -93,6 +93,11 @@ function opt_remove_duplicate_letter_words() {
 function search_wordset() {
     local re="$1"
 
+    if [ -z "$re" ]; then
+        echo 'ERROR: Empty regular expression.' >&2
+        exit 1
+    fi
+
     included_chars_awk='1'   # awk's true
     if [ -n "$included_chars" ] && ! $is_first_guess; then
         # compose a boolean "line matches all characters" check
@@ -249,6 +254,10 @@ if true; then
     fi
     for i in $(seq 1 $frequent_letters_cnt); do
         chars=$(echo "$frequent_letters" | sed -e "s/[$included_chars_cls]//g" | rev | cut -c-$i)
+        if [ -z "$chars" ]; then
+            break
+        fi
+
         new_words=$(echo "$words" | grep -v "[$chars]" || true)
         new_words_without_repeat_letters=$(echo "$words_without_repeat_letters" | grep -v "[$chars]" || true)
         if echo "$new_words_without_repeat_letters" | grep -q '[a-z]'; then
