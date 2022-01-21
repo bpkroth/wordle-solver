@@ -100,10 +100,10 @@ function search_wordset() {
     fi
 
     if $use_sysdict_words_file; then
-        #egrep -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
-        egrep -x "$re" "$wordle_words_file" || egrep -x "$re" "$sysdict_words_file"
+        #egrep -i -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
+        egrep -i -x "$re" "$wordle_words_file" || egrep -i -x "$re" "$sysdict_words_file"
     else
-        egrep -x "$re" "$wordle_words_file"
+        egrep -i -x "$re" "$wordle_words_file"
     fi  | awk "( $included_chars_awk ) { print }" \
         | sort | uniq
 }
