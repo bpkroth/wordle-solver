@@ -36,13 +36,17 @@ export LC_ALL='C'   # en_US
 export LANG="$LC_ALL"
 
 # Fetch the words javascript and turn them into a file we can search.
-if [ ! -s "$wordle_words_file" ] || [ ! -s "$wordle_words_js" ] || [ ! -f "$wordle_words_js_ts" ] || [ $(($(date +%s) - $(stat --format='%Y' "$wordle_words_js_ts"))) -gt 1800 ]; then
+if [ ! -s "$wordle_words_file" ] \
+    || [ ! -s "$wordle_words_js" ] || [ ! -f "$wordle_words_js_ts" ] \
+    || [ $(($(date +%s) - $(stat --format='%Y' "$wordle_words_js_ts"))) -gt 1800 ];
+then
     echo "INFO: Updating local wordle dictionary." >&2
     curl -L -f -sS -o "$wordle_words_js" --time-cond "$wordle_words_js" "$wordle_words_url"
     touch "$wordle_words_js_ts"
     rm -f "$wordle_words_file"
     # Remove unicode escape characters that jq doesn't understand.
-    cat "$wordle_words_js" | egrep -o "JSON.parse\('\[[^)]+\]'\)"  | sed -e "s/^JSON.parse('//" -e "s/')//" | sed -e 's/,/,\n/g' | grep -v '\\x' | jq .[] | sed 's/"//g' > "$wordle_words_file"
+    cat "$wordle_words_js" | egrep -o "JSON.parse\('\[[^)]+\]'\)"  | sed -e "s/^JSON.parse('//" -e "s/')//" | sed -e 's/,/,\n/g' \
+        | grep -v '\\x' | jq .[] | sed 's/"//g' > "$wordle_words_file"
 fi
 
 # Input handling
