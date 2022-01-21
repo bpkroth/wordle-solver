@@ -114,10 +114,16 @@ regexp=''
 # See Also: https://www3.nd.edu/~busiforc/handouts/cryptography/Letter%20Frequencies.html
 #frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
 # Instead of a static set of frequent letters use the set derived from the dictionary for the given word length.
-frequent_letters=$(egrep -i -x "[a-z]{$char_str_len}" "$wordle_words_file" "$sysdict_words_file" \
+dictionaries="$wordle_words_file"
+if $use_sysdict_words_file; then
+    dictionaries+=" $sysdict_words_file"
+fi
+frequent_letters=$(
+    egrep -i -x "[a-z]{$char_str_len}" $dictionaries \
     | tr A-Z a-z | sort | uniq \
     | sed -r -e 's/([a-z])/\1\n/g'  | grep -x '[a-z]' \
-    | sort | uniq -c | sort -r -n | awk '{ printf "%s", $2 }')
+    | sort | uniq -c | sort -r -n | awk '{ printf "%s", $2 }'
+)
 frequent_letters_cnt=$(echo -n "$frequent_letters" | wc -c)
 all_chars=$(echo {a..z} | sed 's/ //g')
 if $is_first_guess; then
