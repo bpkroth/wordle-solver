@@ -37,7 +37,8 @@ Results are returned in two sets:
 
 The program uses the arguments to construct regular expressions to search in both the wordle dictionary and a system dictionary.
 
-From there it uses single English language letter frequency analysis to try to refine the set of suggested next guesses down to a reasonably small set.
+From there it uses single English language letter frequency analysis to try to refine the set of suggested next guesses down to a reasonably small set. \
+Update: Now it uses a dynamic letter frequency analysis to refine the set based on the letters in the matching subset of words.
 
 ### Example
 
