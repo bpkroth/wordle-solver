@@ -175,14 +175,21 @@ else
 
         #echo "guess_result_str=$guess_result_str" >&2
         for i in $(seq 0 $(($char_str_len-1))); do
-            if [[ ${result:$i:1} =~ [A-Z] ]]; then
-                if [ ${char_pos_str:$i:1} == '.' ]; then
-                    # Replace the i-th dot with the fixed letter.
-                    char_pos_str=${char_pos_str:0:$i}${result:$i:1}${char_pos_str:$(($i+1))}
-                elif [ ${char_pos_str:$i:1} != ${result:$i:1} ]; then
-                    # Check for argument errors.
-                    echo "ERROR: Inconsistent character matches at position $i: ${char_pos_str:$i:1} != ${result:$i:1}"
-                    exit 1
+            if [[ ${result:$i:1} =~ [a-zA-Z] ]]; then
+                # Keep track of all "included" characters.
+                if ! [[ "$included_chars" =~ "${result:$i:1}" ]]; then
+                    included_chars+="${result:$i:1}"
+                fi
+
+                if [[ ${result:$i:1} =~ [A-Z] ]]; then
+                    if [ ${char_pos_str:$i:1} == '.' ]; then
+                        # Replace the i-th dot with the fixed letter.
+                        char_pos_str=${char_pos_str:0:$i}${result:$i:1}${char_pos_str:$(($i+1))}
+                    elif [ ${char_pos_str:$i:1} != ${result:$i:1} ]; then
+                        # Check for argument errors.
+                        echo "ERROR: Inconsistent character matches at position $i: ${char_pos_str:$i:1} != ${result:$i:1}"
+                        exit 1
+                    fi
                 fi
             fi
         done
@@ -199,8 +206,6 @@ else
         fi
     done
 
-    included_chars=''
-
     for guess_result_str in $*; do
         guess=$(echo "$guess_result_str" | cut -d: -f1 | tr A-Z a-z)
         result=$(echo "$guess_result_str" | cut -d: -f2 | tr A-Z a-z)
@@ -210,17 +215,19 @@ else
         for i in $(seq 0 $(($char_str_len-1))); do
             # check whether that letter was a success, if not, add it to every other free position's excluded set
             if [ "${result:$i:1}" == '.' ]; then
-                for j in $(seq 0 $(($char_str_len-1))); do
-                    if [ "${char_pos_excluded[$j]}" != '@' ] && ! [[ "${char_pos_excluded[$j]}" =~ "${guess:$i:1}" ]]; then
-                        # Append the wrongly guessed character to the excluded characters set for that position.
-                        char_pos_excluded[$j]+="${guess:$i:1}"
-                    fi
-                done
-            else
-                if ! [[ "$included_chars" =~ "${result:$i:1}" ]]; then
-                    included_chars+="${result:$i:1}"
+                # but only if that letter isn't otherwise included
+                if ! [[ "$included_chars" =~ "${guess:$i:1}" ]]; then
+                    for j in $(seq 0 $(($char_str_len-1))); do
+                        if [ "${char_pos_excluded[$j]}" != '@' ] && ! [[ "${char_pos_excluded[$j]}" =~ "${guess:$i:1}" ]]; then
+                            # Append the wrongly guessed character to the excluded characters set for that position.
+                            char_pos_excluded[$j]+="${guess:$i:1}"
+                        fi
+                    done
+                else
+                    # else we can only exclude it from the current slot
+                    char_pos_excluded[$i]+="${guess:$i:1}"
                 fi
-
+            else
                 if [ "${char_pos_str:$i:1}" == '.' ]; then # || [ "${char_pos_str:$i:1}" != "${result:$i:1}" ]; then
                     # this is the wrong position for that character, append it
                     # to the exclude list, but just for this position
