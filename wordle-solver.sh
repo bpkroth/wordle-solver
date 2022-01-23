@@ -78,6 +78,10 @@ fi
 # The set of characters we know must be included.
 included_chars=''
 
+function retain_duplicate_letter_words() {
+    egrep '(.).*\1' || true
+}
+
 function remove_duplicate_letter_words() {
     egrep -v '(.).*\1' || true
 }
@@ -113,25 +117,37 @@ function search_wordset() {
         | sort | uniq
 }
 
-# Construct a regexp to search in the word list for.
-regexp=''
-# For the initial guess construct a character class using letter frequencies and the dictionaries.
-# See Also: https://www3.nd.edu/~busiforc/handouts/cryptography/Letter%20Frequencies.html
-#frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
-# Instead of a static set of frequent letters use the set derived from the dictionary for the given word length.
-dictionaries="$wordle_words_file"
-if $use_sysdict_words_file; then
-    dictionaries+=" $sysdict_words_file"
-fi
-frequent_letters=$(
-    egrep -i -x "[a-z]{$char_str_len}" $dictionaries \
-    | tr A-Z a-z | sort | uniq \
+function get_letter_count() {
+    local str="${1:-}"
+    echo -n "$str" | wc -c
+}
+
+function calculate_frequent_letters() {
+    local words="${1:-}"
+    if [ -n "$words" ]; then
+        echo "$words"
+    else
+        dictionaries="$wordle_words_file"
+        if $use_sysdict_words_file; then
+            dictionaries+=" $sysdict_words_file"
+        fi
+        cat $dictionaries
+    fi | tr A-Z a-z | sort | uniq \
     | sed -r -e 's/([a-z])/\1\n/g'  | grep -x '[a-z]' \
     | sort | uniq -c | sort -r -n | awk '{ printf "%s", $2 }'
-)
-frequent_letters_cnt=$(echo -n "$frequent_letters" | wc -c)
+}
+
+# Construct a regexp to search in the word list for.
+regexp=''
 all_chars=$(echo {a..z} | sed 's/ //g')
 if $is_first_guess; then
+    # For the initial guess construct a character class using letter frequencies and the dictionaries.
+    # See Also: https://www3.nd.edu/~busiforc/handouts/cryptography/Letter%20Frequencies.html
+    #frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
+    # Instead of a static set of frequent letters use the set derived from the dictionary for the given word length.
+    frequent_letters=$(calculate_frequent_letters)
+    frequent_letters_cnt=$(get_letter_count "$frequent_letters")
+
     #included_chars="$all_chars"
     word=''
     for i in $(seq $char_str_len $frequent_letters_cnt); do
@@ -234,16 +250,23 @@ else
     #echo "regexp=$regexp" >&2
 fi
 
-words=$(search_wordset "$regexp" || true)
-words_without_repeat_letters=$(echo "$words" | remove_duplicate_letter_words)
-if [ -z "$words" ]; then
+all_words=$(search_wordset "$regexp" || true)
+if [ -z "$all_words" ]; then
     echo 'Failed to find any potential matches!' >&2
     exit 1
 fi
 
-# TODO: refine or sort the output next tries by letter, digram, trigram, begging, ending frequencies?
-if true; then
-    max_words=10
+words_with_repeat_letters=$(echo "$all_words" | retain_duplicate_letter_words)
+words_without_repeat_letters=$(echo "$all_words" | remove_duplicate_letter_words)
+
+function refine_word_list() {
+    local words="${1:-}"
+    if [ -z "$words" ]; then
+        return
+    fi
+
+    # DONEish: refine or sort the output next tries by letter, digram, trigram, begging, ending frequencies?
+    local max_words=10
 
     # refine the list using some simple letter frequency checks
     # iteratively remove less common letters
@@ -252,31 +275,29 @@ if true; then
     else
         included_chars_cls="[$included_chars]"
     fi
-    for i in $(seq 1 $frequent_letters_cnt); do
-        chars=$(echo "$frequent_letters" | sed -e "s/[$included_chars_cls]//g" | rev | cut -c-$i)
+    for i in $(seq 1 26); do
+        # Recalculate frequent letters for the set of words involved.
+        frequent_letters=$(calculate_frequent_letters "$words")
+        chars=$(echo "$frequent_letters" | sed -e "s/[$included_chars_cls]//g" | rev | cut -c1)
         if [ -z "$chars" ]; then
             break
         fi
-
         new_words=$(echo "$words" | grep -v "[$chars]" || true)
-        new_words_without_repeat_letters=$(echo "$words_without_repeat_letters" | grep -v "[$chars]" || true)
-        if echo "$new_words_without_repeat_letters" | grep -q '[a-z]'; then
-            if [ $(echo "$words_without_repeat_letters" | wc -l) -gt $max_words ]; then
-                words_without_repeat_letters="$new_words_without_repeat_letters"
-            fi
-        fi
 
         if echo "$new_words" | grep -q '[a-z]'; then
             if [ $(echo "$words" | wc -l) -gt $max_words ]; then
                 words="$new_words"
             fi
-            #echo "continuing reduction after $i of $chars: $words"
         else
-            #echo "stopping after $i"
             break
         fi
     done
-fi
+
+    echo "$words"
+}
+
+words_with_repeat_letters=$(refine_word_list "$words_with_repeat_letters")
+words_without_repeat_letters=$(refine_word_list "$words_without_repeat_letters")
 
 echo "=== Possible match suggestions without repeat letters (better for early guesses) ==="
 echo
@@ -284,4 +305,4 @@ echo "$words_without_repeat_letters"
 echo
 echo "=== Possible match suggestions with repeat letters ==="
 echo
-echo "$words" | egrep '(.).*\1'
+echo "$words_with_repeat_letters"
