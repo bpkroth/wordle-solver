@@ -9,6 +9,10 @@ set -o pipefail
 scriptdir=$(dirname $(readlink -f $0))
 cd "$scriptdir"
 
+# For profiling:
+#set -x
+#export PS4='+ $EPOCHREALTIME\011 '
+
 use_sysdict_words_file=true
 
 # Pick a system dictionary to use.
