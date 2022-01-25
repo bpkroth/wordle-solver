@@ -127,16 +127,7 @@ function get_letter_count() {
 }
 
 function calculate_frequent_letters() {
-    local words="${1:-}"
-    if [ -n "$words" ]; then
-        echo "$words"
-    else
-        dictionaries="$wordle_words_file"
-        if $use_sysdict_words_file; then
-            dictionaries+=" $sysdict_words_file"
-        fi
-        cat $dictionaries
-    fi | tr A-Z a-z | sort | uniq \
+    tr A-Z a-z | sort | uniq \
     | sed -r -e 's/([a-z])/\1\n/g'  | grep -x '[a-z]' \
     | sort | uniq -c | sort -r -n | awk '{ printf "%s", $2 }'
 }
@@ -149,7 +140,11 @@ if $is_first_guess; then
     # See Also: https://www3.nd.edu/~busiforc/handouts/cryptography/Letter%20Frequencies.html
     #frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
     # Instead of a static set of frequent letters use the set derived from the dictionary for the given word length.
-    frequent_letters=$(calculate_frequent_letters)
+    dictionaries="$wordle_words_file"
+    if $use_sysdict_words_file; then
+        dictionaries+=" $sysdict_words_file"
+    fi
+    frequent_letters=$(cat $dictionaries | calculate_frequent_letters)
     frequent_letters_cnt=$(get_letter_count "$frequent_letters")
 
     #included_chars="$all_chars"
@@ -288,7 +283,7 @@ function refine_word_list() {
     fi
     for i in $(seq 1 26); do
         # Recalculate frequent letters for the set of words involved.
-        frequent_letters=$(calculate_frequent_letters "$words")
+        frequent_letters=$(echo "$words" | calculate_frequent_letters)
         chars=$(echo "$frequent_letters" | sed -e "s/[$included_chars_cls]//g" | rev | cut -c1)
         if [ -z "$chars" ]; then
             break
