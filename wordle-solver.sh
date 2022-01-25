@@ -183,7 +183,7 @@ else
                 if [[ ${result:$i:1} =~ [A-Z] ]]; then
                     if [ ${char_pos_str:$i:1} == '.' ]; then
                         # Replace the i-th dot with the fixed letter.
-                        char_pos_str=${char_pos_str:0:$i}${result:$i:1}${char_pos_str:$(($i+1))}
+                        char_pos_str="${char_pos_str:0:$i}${result:$i:1}${char_pos_str:$(($i+1))}"
                     elif [ ${char_pos_str:$i:1} != ${result:$i:1} ]; then
                         # Check for argument errors.
                         echo "ERROR: Inconsistent character matches at position $i: ${char_pos_str:$i:1} != ${result:$i:1}"
