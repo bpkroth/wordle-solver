@@ -193,7 +193,8 @@ else
             fi
         done
     done
-    char_pos_str=$(echo $char_pos_str | tr A-Z a-z)
+    char_pos_str=$(echo "$char_pos_str" | tr A-Z a-z)
+    included_chars=$(echo "$included_chars" | tr A-Z a-z)
 
     # prep some arrays and regex to use for matching word candidates
     # let '@' be a special character denoting an already fixed position
