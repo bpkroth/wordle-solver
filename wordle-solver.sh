@@ -13,7 +13,12 @@ cd "$scriptdir"
 #set -x
 #export PS4='+ $EPOCHREALTIME\011 '
 
-use_sysdict_words_file=true
+# Allow this to be overridden on the CLI.
+USE_SYSDICT_WORDS_FILE=${USE_SYSDICT_WORDS_FILE:-true}
+if ! echo "$USE_SYSDICT_WORDS_FILE" | egrep -q '(true|false)'; then
+    echo "Invalid argument for USE_SYSDICT_WORDS_FILE: '${USE_SYSDICT_WORDS_FILE}'" >&2
+    1
+fi
 
 # Pick a system dictionary to use.
 #sysdict_words_file='/usr/share/dict/words'
@@ -112,7 +117,7 @@ function search_wordset() {
         included_chars_awk+=$(echo "$included_chars" | sed -r -e 's|([a-z])| \&\& /\1/|g')
     fi
 
-    if $use_sysdict_words_file; then
+    if $USE_SYSDICT_WORDS_FILE; then
         #egrep -i -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
         egrep -i -x "$re" "$wordle_words_file" || egrep -i -x "$re" "$sysdict_words_file"
     else
@@ -141,7 +146,7 @@ if $is_first_guess; then
     #frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
     # Instead of a static set of frequent letters use the set derived from the dictionary for the given word length.
     dictionaries="$wordle_words_file"
-    if $use_sysdict_words_file; then
+    if $USE_SYSDICT_WORDS_FILE; then
         dictionaries+=" $sysdict_words_file"
     fi
     frequent_letters=$(cat $dictionaries | calculate_frequent_letters)
