@@ -219,6 +219,8 @@ else
         done
 
         #echo "guess_result_str=$guess_result_str" >&2
+        #echo "guess_without_correct_letters=$guess_without_correct_letters" >&2
+        #echo "included_chars=$included_chars" >&2
 
         for i in $(seq 0 $(($char_str_len-1))); do
             # check whether that letter was a success, if not, add it to every other free position's excluded set
