@@ -128,6 +128,17 @@ Update: Now it uses a dynamic letter frequency analysis to refine the set based 
 
 4. And so on ...
 
+## Advanced Usage
+
+```text
+# CONTROL_VAR=value ./wordle-solver.sh string-length [<guess-string:dot-delimited-result-string>]*
+```
+
+Where `CONTROL_VAR=val` is one (or more) of:
+
+- `USE_SYSDICT_WORDS_FILE=<true|false|only>` can control whether we fallback (`true`) to the system dictionary after the wordle dictionary, or `only` use the system dictionary file (which can be useful for the [sweardle](https://sweardle.com/) version of the game)
+- `MAX_WORDS=10` can control the number of words returned
+
 ## Notes
 
 ### Why `bash` !?
