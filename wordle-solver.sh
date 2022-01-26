@@ -15,7 +15,7 @@ cd "$scriptdir"
 
 # Allow this to be overridden on the CLI.
 USE_SYSDICT_WORDS_FILE=${USE_SYSDICT_WORDS_FILE:-true}
-if ! echo "$USE_SYSDICT_WORDS_FILE" | egrep -q '(true|false)'; then
+if ! echo "$USE_SYSDICT_WORDS_FILE" | egrep -q -x '(true|false|only)'; then
     echo "Invalid argument for USE_SYSDICT_WORDS_FILE: '${USE_SYSDICT_WORDS_FILE}'" >&2
     1
 fi
@@ -84,6 +84,13 @@ else
     is_first_guess=false
 fi
 
+dictionaries="$wordle_words_file"
+if [ "$USE_SYSDICT_WORDS_FILE" == 'true' ]; then
+    dictionaries+=" $sysdict_words_file"
+elif [ "$USE_SYSDICT_WORDS_FILE" == 'only' ]; then
+    dictionaries="$sysdict_words_file"
+fi
+
 # The set of characters we know must be included.
 included_chars=''
 
@@ -117,13 +124,19 @@ function search_wordset() {
         included_chars_awk+=$(echo "$included_chars" | sed -r -e 's|([a-z])| \&\& /\1/|g')
     fi
 
-    if $USE_SYSDICT_WORDS_FILE; then
-        #egrep -i -x "$re" "$wordle_words_file" "$sysdict_words_file" | cut -d: -f2
-        egrep -i -x "$re" "$wordle_words_file" || egrep -i -x "$re" "$sysdict_words_file"
-    else
-        egrep -i -x "$re" "$wordle_words_file"
-    fi  | awk "( $included_chars_awk ) { print }" \
-        | sort | uniq
+    for dict in $dictionaries; do
+        results=$(
+            cat $dict \
+            | egrep -i -x "$re" \
+            | tr A-Z a-z \
+            | awk "( $included_chars_awk ) { print }" \
+            | sort | uniq
+        )
+        if [ -n "$results" ]; then
+            echo "$results"
+            break
+        fi
+    done
 }
 
 function get_letter_count() {
@@ -145,10 +158,6 @@ if $is_first_guess; then
     # See Also: https://www3.nd.edu/~busiforc/handouts/cryptography/Letter%20Frequencies.html
     #frequent_letters='etaoinshrdlcumwfgypbvkjxqz'
     # Instead of a static set of frequent letters use the set derived from the dictionary for the given word length.
-    dictionaries="$wordle_words_file"
-    if $USE_SYSDICT_WORDS_FILE; then
-        dictionaries+=" $sysdict_words_file"
-    fi
     frequent_letters=$(cat $dictionaries | calculate_frequent_letters)
     frequent_letters_cnt=$(get_letter_count "$frequent_letters")
 
