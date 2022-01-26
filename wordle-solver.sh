@@ -210,13 +210,26 @@ else
         guess=$(echo "$guess_result_str" | cut -d: -f1 | tr A-Z a-z)
         result=$(echo "$guess_result_str" | cut -d: -f2 | tr A-Z a-z)
 
+        guess_without_correct_letters="$guess"
+        for i in $(seq 0 $(($char_str_len-1))); do
+            if [ "${char_pos_str:$i:1}" != '.' ] && [ "${char_pos_str:$i:1}" == "${guess_without_correct_letters}" ]; then
+                # Replace the i-th correct character with an @ symbol.
+                guess_without_correct_letters="${guess_without_correct_letters:0:$i}@${guess_without_correct_letters:$(($i+1))}"
+            fi
+        done
+
         #echo "guess_result_str=$guess_result_str" >&2
 
         for i in $(seq 0 $(($char_str_len-1))); do
             # check whether that letter was a success, if not, add it to every other free position's excluded set
             if [ "${result:$i:1}" == '.' ]; then
-                # but only if that letter isn't otherwise included
-                if ! [[ "$included_chars" =~ "${guess:$i:1}" ]]; then
+                # but only if that letter isn't otherwise already included in the string
+                # or this line includes no other guesses for that letter
+                # (after we remove the already correct letters)
+                # in which case we know its wrong for all positions
+                if ! [[ "$included_chars" =~ "${guess:$i:1}" ]] \
+                    || [ $(echo "$guess_without_correct_letters" | sed -r 's/([a-z])/\1\n/g' | grep -c -x "${guess:$i:1}") -eq 1 ];
+                then
                     for j in $(seq 0 $(($char_str_len-1))); do
                         if [ "${char_pos_excluded[$j]}" != '@' ] && ! [[ "${char_pos_excluded[$j]}" =~ "${guess:$i:1}" ]]; then
                             # Append the wrongly guessed character to the excluded characters set for that position.
