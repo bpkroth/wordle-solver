@@ -227,6 +227,8 @@ else
                 # or this line includes no other guesses for that letter
                 # (after we remove the already correct letters)
                 # in which case we know its wrong for all positions
+                # TODO: alternatively, it could include multiple guesses for
+                # that character as long as all of them are wrong
                 if ! [[ "$included_chars" =~ "${guess:$i:1}" ]] \
                     || [ $(echo "$guess_without_correct_letters" | sed -r 's/([a-z])/\1\n/g' | grep -c -x "${guess:$i:1}") -eq 1 ];
                 then
