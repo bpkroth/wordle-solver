@@ -17,7 +17,13 @@ cd "$scriptdir"
 USE_SYSDICT_WORDS_FILE=${USE_SYSDICT_WORDS_FILE:-true}
 if ! echo "$USE_SYSDICT_WORDS_FILE" | egrep -q -x '(true|false|only)'; then
     echo "Invalid argument for USE_SYSDICT_WORDS_FILE: '${USE_SYSDICT_WORDS_FILE}'" >&2
-    1
+    exit 1
+fi
+
+MAX_WORDS=${MAX_WORDS:-10}
+if ! echo "$MAX_WORDS" | egrep -q -x '[0-9]+'; then
+    echo "Invalid argument for MAX_WORDS: '${MAX_WORDS}'" >&2
+    exit 1
 fi
 
 # Pick a system dictionary to use.
@@ -304,7 +310,6 @@ function refine_word_list() {
     fi
 
     # DONEish: refine or sort the output next tries by letter, digram, trigram, begging, ending frequencies?
-    local max_words=10
 
     # refine the list using some simple letter frequency checks
     # iteratively remove less common letters
@@ -323,7 +328,7 @@ function refine_word_list() {
         new_words=$(echo "$words" | grep -v "[$chars]" || true)
 
         if echo "$new_words" | grep -q '[a-z]'; then
-            if [ $(echo "$words" | wc -l) -gt $max_words ]; then
+            if [ $(echo "$words" | wc -l) -gt $MAX_WORDS ]; then
                 words="$new_words"
             fi
         else
