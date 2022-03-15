@@ -20,6 +20,17 @@ if ! echo "$USE_SYSDICT_WORDS_FILE" | egrep -q -x '(true|false|only)'; then
     exit 1
 fi
 
+# Wordle got smarter and stopped publishing the words in the source code.
+USE_WORDLE_WORDS_FILE=${USE_WORDLE_WORDS_FILE:-false}
+if ! echo "$USE_WORDLE_WORDS_FILE" | egrep -q -x '(true|false)'; then
+    echo "Invalid argument for USE_WORDLE_WORDS_FILE: '${USE_WORDLE_WORDS_FILE}'" >&2
+    exit 1
+fi
+
+if [ "$USE_WORDLE_WORDS_FILE" == 'false' ] && [ "$USE_SYSDICT_WORDS_FILE" == 'false' ]; then
+    echo "ERROR: At least one of USE_WORDLE_WORDS_FILE and USE_SYSDICT_WORDS_FILE must not be false." >&2
+fi
+
 MAX_WORDS=${MAX_WORDS:-10}
 if ! echo "$MAX_WORDS" | egrep -q -x '[0-9]+'; then
     echo "Invalid argument for MAX_WORDS: '${MAX_WORDS}'" >&2
@@ -34,7 +45,7 @@ sysdict_words_file='/usr/share/dict/american-english'
 #sysdict_words_file='/usr/share/dict/american-english-insane'
 
 wordle_words_file='wordle_words.txt'
-wordle_words_url='https://wordlegame.org/assets/js/wordle/en.js?v4'
+wordle_words_url='https://wordlegame.org/assets/js/wordle/en.js?v20.5'
 wordle_words_js='wordle.js'
 wordle_words_js_ts='.wordle.js.checked'
 
@@ -51,17 +62,20 @@ export LC_ALL='C'   # en_US
 export LANG="$LC_ALL"
 
 # Fetch the words javascript and turn them into a file we can search.
-if [ ! -s "$wordle_words_file" ] \
-    || [ ! -s "$wordle_words_js" ] || [ ! -f "$wordle_words_js_ts" ] \
-    || [ $(($(date +%s) - $(stat --format='%Y' "$wordle_words_js_ts"))) -gt 1800 ];
-then
-    echo "INFO: Updating local wordle dictionary." >&2
-    curl -L -f -sS -o "$wordle_words_js" --time-cond "$wordle_words_js" "$wordle_words_url"
-    touch "$wordle_words_js_ts"
-    rm -f "$wordle_words_file"
-    # Remove unicode escape characters that jq doesn't understand.
-    cat "$wordle_words_js" | egrep -o "JSON.parse\('\[[^)]+\]'\)"  | sed -e "s/^JSON.parse('//" -e "s/')//" | sed -e 's/,/,\n/g' \
-        | grep -v '\\x' | jq .[] | sed 's/"//g' > "$wordle_words_file"
+if $USE_WORDLE_WORDS_FILE; then
+    if [ ! -s "$wordle_words_file" ] \
+        || [ ! -s "$wordle_words_js" ] || [ ! -f "$wordle_words_js_ts" ] \
+        || [ $(($(date +%s) - $(stat --format='%Y' "$wordle_words_js_ts"))) -gt 1800 ];
+    then
+        echo "INFO: Updating local wordle dictionary." >&2
+        curl -L -f -sS -o "$wordle_words_js" --time-cond "$wordle_words_js" "$wordle_words_url"
+        touch "$wordle_words_js_ts"
+        rm -f "$wordle_words_file"
+        # Remove unicode escape characters that jq doesn't understand.
+        cat "$wordle_words_js" | egrep -o "JSON.parse\('\[[^)]+\]'\)"  \
+            | sed -e "s/^JSON.parse('//" -e "s/')//" | sed -e 's/,/,\n/g' \
+            | grep -v '\\x' | jq .[] | sed 's/"//g' > "$wordle_words_file"
+    fi
 fi
 
 # Input handling
@@ -90,7 +104,10 @@ else
     is_first_guess=false
 fi
 
-dictionaries="$wordle_words_file"
+dictionaries=''
+if [ "$USE_WORDLE_WORDS_FILE" == 'true' ]; then
+    dictionaries+="$wordle_words_file"
+fi
 if [ "$USE_SYSDICT_WORDS_FILE" == 'true' ]; then
     dictionaries+=" $sysdict_words_file"
 elif [ "$USE_SYSDICT_WORDS_FILE" == 'only' ]; then
