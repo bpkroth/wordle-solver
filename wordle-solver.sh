@@ -37,14 +37,29 @@ if ! echo "$MAX_WORDS" | egrep -q -x '[0-9]+'; then
     exit 1
 fi
 
-# TODO: Add multi-language support.
-
 # Pick a system dictionary to use.
-#sysdict_words_file='/usr/share/dict/words'
-sysdict_words_file='/usr/share/dict/american-english'
-#sysdict_words_file='/usr/share/dict/american-english-large'
-#sysdict_words_file='/usr/share/dict/american-english-huge'
-#sysdict_words_file='/usr/share/dict/american-english-insane'
+word_pkgs=''
+sysdict_words_file=''
+WORDLE_LANG=${WORDLE_LANG:-en}
+if [ "$WORDLE_LANG" == 'en' ]; then
+    word_pkgs='wamerican wamerican-large wamerican-huge wamerican-insane'
+
+    #sysdict_words_file='/usr/share/dict/words'
+    sysdict_words_file='/usr/share/dict/american-english'
+    #sysdict_words_file='/usr/share/dict/american-english-large'
+    #sysdict_words_file='/usr/share/dict/american-english-huge'
+    #sysdict_words_file='/usr/share/dict/american-english-insane'
+elif [ "$WORDLE_LANG" == 'de' ]; then
+    word_pkgs='wogerman wngerman'
+
+    #sysdict_words_file='/usr/share/dict/ogerman'
+    sysdict_words_file='/usr/share/dict/ngerman'
+else
+    echo "ERROR: Unhandled WORDLE_LANG: $WORDLE_LANG" >&2
+    exit 1
+fi
+
+# TODO: Add multi-language support.
 
 wordle_words_file='wordle_words.txt'
 wordle_words_url='https://wordlegame.org/assets/js/wordle/en.js?v20.5'
@@ -52,10 +67,17 @@ wordle_words_js='wordle.js'
 wordle_words_js_ts='.wordle.js.checked'
 
 # Install some dependencies in case they're missing.
-if [ ! -f "$sysdict_words_file" ] || ! type jq curl >/dev/null; then
+if [ ! -f "$sysdict_words_file" ]; then
     set -x
     sudo apt update
-    sudo apt -y install wamerican wamerican-large wamerican-huge wamerican-insane jq curl
+    sudo apt -y install $word_pkgs
+    set +x
+fi
+
+if ! type jq curl >/dev/null; then
+    set -x
+    sudo apt update
+    sudo apt -y install jq curl
     set +x
 fi
 
