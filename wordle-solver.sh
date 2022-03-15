@@ -37,6 +37,8 @@ if ! echo "$MAX_WORDS" | egrep -q -x '[0-9]+'; then
     exit 1
 fi
 
+# TODO: Add multi-language support.
+
 # Pick a system dictionary to use.
 #sysdict_words_file='/usr/share/dict/words'
 sysdict_words_file='/usr/share/dict/american-english'
